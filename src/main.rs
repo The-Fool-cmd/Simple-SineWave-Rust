@@ -1,5 +1,3 @@
-use std::time::{Duration, Instant};
-
 use crossterm::event::KeyCode;
 use ratatui::{
     Frame,
@@ -9,15 +7,17 @@ use ratatui::{
     text::Line,
     widgets::{Axis, Block, Chart, Paragraph},
 };
+use std::time::{Duration, Instant};
 
+// Stores state of app
 struct App {
     freq: f32,
     amp: f32,
     started_at: Instant,
     should_quit: bool,
-    last_tick: Instant,
 }
 
+// bougee
 impl Default for App {
     fn default() -> Self {
         App {
@@ -25,12 +25,12 @@ impl Default for App {
             amp: 1.0,
             started_at: Instant::now(),
             should_quit: false,
-            last_tick: Instant::now(),
         }
     }
 }
 
 impl App {
+    // Handles all the inputs and changes App state accordingly
     fn process_input(&mut self, key: KeyCode) {
         match key {
             KeyCode::Char('q') => {
@@ -49,8 +49,10 @@ impl App {
     }
 
     fn ui(&self, frame: &mut Frame) {
+        // Split layout vertically into smol rect and beeg rect
         let [top, bottom] =
             Layout::vertical(vec![Constraint::Min(3), Constraint::default()]).areas(frame.area());
+        // The stuff we would like to know
         let debug_text = Line::from(vec![
             "Time elapsed: ".into(),
             format!("{:?}", self.started_at.elapsed()).into(),
@@ -59,8 +61,10 @@ impl App {
             " Frequency: ".into(),
             self.freq.to_string().into(),
         ]);
+        // Create debug paragraph from 'debug_text'
         let debug_line: Paragraph = Paragraph::new(debug_text)
             .block(Block::bordered().title("Debug Line".bold().into_centered_line()));
+        // Create chart from... nothing yet
         let graph: Chart = Chart::default()
             .x_axis(
                 Axis::default()
@@ -74,6 +78,7 @@ impl App {
             )
             .block(Block::bordered().title("Sine Wave".bold().into_centered_line()));
 
+        // Render both blocks
         frame.render_widget(debug_line, top);
         frame.render_widget(graph, bottom);
     }
@@ -87,14 +92,16 @@ fn main() -> Result<(), std::io::Error> {
         if app.should_quit {
             break;
         }
-        terminal.draw(|f| app.ui(f)).expect("Idk, error: ");
-        app.last_tick = Instant::now();
+        // Some fucking black magic this is
+        terminal.draw(|f| app.ui(f))?;
+        // **Blocking** waiting for input
         if event::poll(Duration::from_millis(16))? {
             if let Event::Key(key) = event::read()? {
                 app.process_input(key.code);
             }
         }
     }
+    // If app crashes before this, too bad
     ratatui::restore();
     return Ok(());
 }
